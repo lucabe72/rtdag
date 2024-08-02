@@ -53,6 +53,7 @@ public:
             throw std::logic_error(
                 "Exceeded maximum size for the multiqueue! Too many tasks!");
         }
+        buffers.resize(size);
     }
 
     // May block if the i-th elem is busy; returns 1 if all
