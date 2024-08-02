@@ -257,6 +257,8 @@ void Task::loop_body_after(int iter, const struct timespec &duration) {
     //            task_name, iter, duration, task.deadline);
     //     // TODO: stop or continue ?
     // }
+#else
+    (void)duration;
 #endif // NDEBUG
 
     if (is_sink()) {
@@ -265,7 +267,7 @@ void Task::loop_body_after(int iter, const struct timespec &duration) {
         LOG(INFO, "task %s (%u): dag dag_duration " TIMESPEC_FORMAT " s\n",
             name.c_str(), iter, dag_duration.tv_sec, dag_duration.tv_nsec);
 
-        microseconds mduration = to_duration_truncate<microseconds>(duration);
+        microseconds mduration = to_duration_truncate<microseconds>(dag_duration);
 
         dag.response_times[iter] = mduration;
 
