@@ -47,6 +47,12 @@ int run_dag(const std::string &in_fname) {
     unsigned seed = 123456;
     std::cout << "SEED: " << seed << std::endl;
 
+    // Check whether the environment contains the TICKS_PER_US variable
+    int ret = get_ticks_per_us(true);
+    if (ret) {
+        return ret;
+    }
+
     // read the dag configuration from the selected type of input
     std::unique_ptr<input_base> inputs =
         std::make_unique<input_type>(in_fname.c_str());
@@ -54,12 +60,6 @@ int run_dag(const std::string &in_fname) {
     DagTaskset task_set(*inputs);
     std::cout << "\nPrinting the input DAG: \n";
     task_set.print(std::cout);
-
-    // Check whether the environment contains the TICKS_PER_US variable
-    int ret = get_ticks_per_us(true);
-    if (ret) {
-        return ret;
-    }
 
     // create the directory where execution time are saved
     struct stat st; // This is C++, you cannot use {0} to initialize to zero an
