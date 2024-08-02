@@ -50,9 +50,9 @@ void sched_info::set() const {
     } else {
         // FIXME: for now we are using the deadline for everything!!!!
         sa.sched_policy = SCHED_DEADLINE;
-        sa.sched_runtime = _deadline.count();
+        sa.sched_runtime = _runtime.count();
         sa.sched_deadline = _deadline.count();
-        sa.sched_period = _deadline.count();
+        sa.sched_period = _period.count();
     }
 
     if (sched_setattr(0, &sa, 0) < 0) {
