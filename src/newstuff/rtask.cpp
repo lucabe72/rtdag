@@ -229,6 +229,7 @@ void write_to_queue(const char *from, int iter, char *buffer, int size) {
 }
 
 void Task::loop_body_after(int iter, const struct timespec &duration) {
+    (void)duration;
     // Push the values into each queue
     for (size_t i = 0; i < out_buffers.size(); ++i) {
         write_to_queue(name.c_str(), iter, (char *)out_buffers[i]->msg.data(),
