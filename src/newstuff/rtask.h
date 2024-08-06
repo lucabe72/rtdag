@@ -83,6 +83,7 @@ public:
 #endif
 
 private:
+    std::thread th_handle;
     void task_body(unsigned seed);
     void common_init();
     void loop_body_before(int iter);
@@ -109,8 +110,15 @@ public:
     virtual ~Task() = default;
 
     // TODO: implement correctly the full process launcher
-    std::thread start(int seed) {
-        return std::thread(&Task::task_body, this, seed);
+    int start(int seed) {
+        th_handle = std::thread(&Task::task_body, this, seed);
+
+	// TODO: Check errors and implement error code
+	return 0;
+    }
+
+    void wait(void) {
+      th_handle.join();
     }
 
     inline bool is_originator() const {

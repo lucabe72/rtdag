@@ -180,10 +180,8 @@ void DagTaskset::print(std::ostream &os) {
 }
 
 void DagTaskset::launch(std::vector<int> &pids, unsigned seed) {
-    std::vector<std::thread> threads;
-
-    for (const auto &task_ptr : tasks) {
-        threads.emplace_back(task_ptr->start(seed));
+    for (auto &task_ptr : tasks) {
+        task_ptr->start(seed);
 
         // TODO: save the tid once the thread starts in a
         // shared box and retrieve it from here!
@@ -197,7 +195,7 @@ void DagTaskset::launch(std::vector<int> &pids, unsigned seed) {
         // pids.push_back(tid);
     }
 
-    for (auto &thread : threads) {
-        thread.join();
+    for (auto &task_ptr : tasks) {
+        task_ptr->wait();
     }
 }
