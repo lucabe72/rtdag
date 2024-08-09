@@ -160,13 +160,13 @@ static char read_input_buffer(std::span<char> buffer) {
 #endif
 
 void wait_incoming_messages(Task &task, int iter) {
-    if (task.in_buffers.size()) {
+    if (task.in_mq.size()) {
         // All the input buffers share the same MultiQueue reference, so we
         // can just wait on the first one
-        task.in_buffers[0]->mq.pop();
+        task.in_mq.pop();
 
         // Check that all the buffers have sent the right amount of data
-        for (size_t i = 0; i < task.in_buffers.size(); ++i) {
+        for (size_t i = 0; i < task.in_mq.size(); ++i) {
             // NOTE: CHECKED ONLY IN DEBUG MODE
             // assert(strlen(task.in_buffers[i]->msg.data()) ==
             //        (size_t) task.in_buffers[i]->msg.size() - 1);
@@ -177,14 +177,14 @@ void wait_incoming_messages(Task &task, int iter) {
             task.checksum ^= read_input_buffer(task.in_buffers[i]->msg);
 #endif
 
+	    (void)iter;
             // To avoid printing too many characters if the buffer is very
             // long, we limit to the first 50 characters.
-            LOG(DEBUG,
-                "task %s (%u), buffer n%d_n%d(%lu): got message: '%.50s'\n",
-                task.name.c_str(), iter, task.in_buffers[i]->from,
-                task.in_buffers[i]->to,
-                strlen((char *)task.in_buffers[i]->msg.data()),
-                task.in_buffers[i]->msg.data());
+            //LOG(DEBUG,
+            //    "task %s (%u), buffer nxxx_nyyy(%lu): got message: '%.50s'\n",
+            //    task.name.c_str(), iter,
+            //    strlen((char *)task.in_buffers[i]->msg.data()),
+            //    task.in_buffers[i]->msg.data());
         }
     }
 }
@@ -351,11 +351,11 @@ void Task::print(std::ostream &os) {
     os << "deadline: " << scheduling.deadline().count() << "ns, ";
     os << "affinity: " << cpu << '\n';
 
-    os << " ins: ";
-    for (const auto &edge_ptr : in_buffers) {
-        os << "n" << edge_ptr->from << "_n" << edge_ptr->to << ", ";
-    }
-    os << '\n';
+    //os << " ins: ";
+    //for (const auto &edge_ptr : in_buffers) {
+    //    os << "n" << edge_ptr->from << "_n" << edge_ptr->to << ", ";
+    //}
+    //os << '\n';
 
     os << " outs: ";
     for (const auto &edge_ptr : out_buffers) {

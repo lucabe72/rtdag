@@ -38,6 +38,8 @@ private:
     // to each Edge)
     std::vector<void *> buffers;
 
+    size_t inputs;
+
     inline size_t num_predecessors() {
         return waiting.size();
     }
@@ -48,12 +50,17 @@ private:
     }
 
 public:
-    MultiQueue(size_t size) : waiting(size, 0), cv_predecessors(size) {
+    MultiQueue(size_t size) : waiting(size == 0 ? 1 : size, 0), cv_predecessors(size == 0 ? 1 : size) {
         if (size > arrived_mask.size()) {
             throw std::logic_error(
                 "Exceeded maximum size for the multiqueue! Too many tasks!");
         }
-        buffers.resize(size);
+        inputs = size;
+        buffers.resize(size == 0 ? 1 : size);
+    }
+
+    size_t size(void) {
+        return inputs;
     }
 
     // May block if the i-th elem is busy; returns 1 if all

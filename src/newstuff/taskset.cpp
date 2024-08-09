@@ -83,10 +83,10 @@ DagTaskset::DagTaskset(const input_base &input) :
     // Create the in_queues for each task
     for (int task_id = 0; task_id < ntasks; ++task_id) {
         int inputs_count = howmany_inputs(input, task_id);
-        if (inputs_count < 1) {
-            inputs_count =
-                1; // Will be used between the originator and the sink
-        }
+        //if (inputs_count < 1) {
+        //    inputs_count =
+        //        1; // Will be used between the originator and the sink
+        //}
         dag.in_queues.emplace_back(std::make_unique<MultiQueue>(inputs_count));
     }
 
@@ -133,7 +133,7 @@ DagTaskset::DagTaskset(const input_base &input) :
 
         if (task_type == "cpu") {
             tasks.emplace_back(std::make_unique<CPUTask>(
-                dag, name, task_type, sched_info, cpu, in_edges, out_edges,
+                dag, name, task_type, sched_info, cpu, *dag.in_queues[i], out_edges,
                 std::chrono::microseconds(input.get_tasks_wcet(i)),
                 input.get_tasks_expected_wcet_ratio(i),
                 input.get_ticks_per_us(i), input.get_matrix_size(i),

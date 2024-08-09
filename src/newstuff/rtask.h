@@ -71,7 +71,7 @@ public:
     const sched_info scheduling;
     const int cpu;
 
-    std::vector<Edge *> in_buffers;
+    MultiQueue &in_mq;
     std::vector<Edge *> out_buffers;
 
     period_info pinfo;
@@ -98,13 +98,13 @@ protected:
 public:
     Task(Dag &dag, const std::string &name, const std::string &type,
          const sched_info &scheduling, int cpu,
-         const std::vector<Edge *> &in_edges, std::vector<Edge *> out_edges) :
+         MultiQueue &in, std::vector<Edge *> out_edges) :
         dag(dag),
         name(name),
         type(type),
         scheduling(scheduling),
         cpu(cpu),
-        in_buffers(in_edges),
+        in_mq(in),
         out_buffers(out_edges) {}
 
     virtual ~Task() = default;
@@ -122,7 +122,7 @@ public:
     }
 
     inline bool is_originator() const {
-        return in_buffers.size() == 0;
+        return in_mq.size() == 0;
     }
 
     inline bool is_sink() const {
@@ -143,11 +143,11 @@ class GaussTask : public Task {
 public:
     GaussTask(Dag &dag, const std::string &name, const std::string &type,
               const sched_info &scheduling, int cpu,
-              const std::vector<Edge *> &in_edges,
+              MultiQueue &in_mq,
               std::vector<Edge *> out_edges, microseconds wcet,
               u64 expected_wcet_ratio, float ticks_per_us, s32 matrix_size,
               s32 omp_target) :
-        Task(dag, name, type, scheduling, cpu, in_edges, out_edges),
+        Task(dag, name, type, scheduling, cpu, in_mq, out_edges),
         wcet(wcet.count() * expected_wcet_ratio),
         ticks_per_us(ticks_per_us),
         matrix_size(matrix_size),
