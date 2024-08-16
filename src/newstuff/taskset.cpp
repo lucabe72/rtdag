@@ -159,7 +159,7 @@ DagTaskset::DagTaskset(const input_base &input) :
         return task.is_originator();
     };
 
-    const auto is_sink = [](const Task &task) { return task.is_originator(); };
+    const auto is_sink = [](const Task &task) { return task.is_sink(); };
 
     int orig_index = task_single_check(tasks, is_originator, "originator");
     task_single_check(tasks, is_sink, "sink");
