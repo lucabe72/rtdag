@@ -87,7 +87,7 @@ DagTaskset::DagTaskset(const input_base &input) :
         //    inputs_count =
         //        1; // Will be used between the originator and the sink
         //}
-        dag.in_queues.emplace_back(std::make_unique<MultiQueue>(inputs_count));
+        dag.in_queues.emplace_back(std::make_unique<MultiQueue>(inputs_count, nullptr));
     }
 
     // All the in_queues are in place, now we can create the edges
@@ -102,9 +102,18 @@ DagTaskset::DagTaskset(const input_base &input) :
             // There is an edge from sender to receiver of msg_size bytes
             dag.edges.emplace_back(*dag.in_queues[receiver], sender, receiver,
                                    push_idx, msg_size);
+	    (*dag.in_queues[receiver])[push_idx] = &dag.outs[sender];
 
             push_idx++;
         }
+    }
+
+    for (int i = 0; i < ntasks; i++) {
+      for (long unsigned int j = 0; j < (*dag.in_queues[i]).size(); j++) {
+        if ((*dag.in_queues[i])[j] == nullptr) {
+          LOG(ERROR, "Bad queue %d %lu\n.", i, j);
+	}
+      }
     }
 
     // Finally, now that we have all the data, we can create the tasks (not
@@ -161,15 +170,16 @@ DagTaskset::DagTaskset(const input_base &input) :
 
     const auto is_sink = [](const Task &task) { return task.is_sink(); };
 
-    int orig_index = task_single_check(tasks, is_originator, "originator");
+    /*int orig_index =*/ task_single_check(tasks, is_originator, "originator");
     task_single_check(tasks, is_sink, "sink");
 
-    dag.start_dag = dag.in_queues[orig_index].get();
+    //dag.start_dag = dag.in_queues[orig_index].get();
 
     // The originator will wait for someone to wake him up before executing
     // on this queue, hence we push something on it to allow it to start
     // executing the first time
-    dag.start_dag->push(0);
+    //dag.start_dag->push(0);
+    dag.tasks = &tasks;
 }
 
 void DagTaskset::print(std::ostream &os) {

@@ -14,6 +14,7 @@
 #include "rtgauss.h"
 #include "time_aux.h"
 
+class Task;
 class Dag {
 public:
     const std::string name;
@@ -47,7 +48,7 @@ public:
     struct timespec start_time;
 
     // Used to release a new instance of the dag
-    MultiQueue *start_dag;
+    //MultiQueue *start_dag;
 
     // All the response times
     std::vector<microseconds> response_times;
@@ -59,7 +60,11 @@ public:
         e2e_deadline(e2e_deadline),
         num_activations(num_activations),
         barrier(ntasks),
-        response_times(num_activations) {}
+        response_times(num_activations),
+	tasks(nullptr) {}
+
+    std::vector<std::unique_ptr<Task>> *tasks;
+    int outs[128];
 };
 
 class Task {
@@ -84,7 +89,7 @@ public:
 
 private:
     std::thread th_handle;
-    void task_body(unsigned seed);
+    void task_generate(unsigned seed);
     void common_init();
     void loop_body_before(int iter);
     void loop_body_after(int iter, const struct timespec &duration);
@@ -96,6 +101,7 @@ protected:
     virtual void do_exit() = 0;
 
 public:
+    void task_body();
     Task(Dag &dag, const std::string &name, const std::string &type,
          const sched_info &scheduling, int cpu,
          MultiQueue &in, std::vector<Edge *> out_edges) :
@@ -111,14 +117,19 @@ public:
 
     // TODO: implement correctly the full process launcher
     int start(int seed) {
-        th_handle = std::thread(&Task::task_body, this, seed);
+	do_init();
+        if (is_originator()) {
+          th_handle = std::thread(&Task::task_generate, this, seed);
+	}
 
 	// TODO: Check errors and implement error code
 	return 0;
     }
 
     void wait(void) {
-      th_handle.join();
+      if (is_originator()) {
+        th_handle.join();
+      }
     }
 
     inline bool is_originator() const {

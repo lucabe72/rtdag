@@ -21,7 +21,7 @@ scenarios
 #include <limits>
 #include <yaml-cpp/yaml.h>
 
-#define MAX_N_TASKS (MultiQueue::mask_type().size())
+#define MAX_N_TASKS 128 
 
 class input_yaml : public input_base {
 private:

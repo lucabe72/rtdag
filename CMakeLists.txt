@@ -133,9 +133,11 @@ target_compile_options(rtdag PRIVATE
     -Wno-variadic-macros
 
     -Wfatal-errors
+    -fopenmp
 
     -include ${CMAKE_CURRENT_BINARY_DIR}/rtdag_config.h
 )
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fopenmp ${OpenMP_CXX_FLAGS}")
 
 # FIXME: some way to setup which openmp targets to compile
 # at configuration time

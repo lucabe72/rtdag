@@ -66,29 +66,78 @@ static inline void task_pin(int cpu) {
 //     exec_time_f << task.sched.deadline << '\n';
 // }
 
+void period_init(period_info &pinfo, std::chrono::microseconds period) {
+    pinfo_init(&pinfo, std::chrono::nanoseconds(period).count());
+}
+
 // ------------------------- MEMBER FUNCTIONS -------------------------- //
-
-void Task::task_body(unsigned seed) {
-    (void)seed; // FIXME: pass it to the other functions
-
-    do_init();
-    common_init();
-
-    for (int i = 0; i < dag.num_activations; ++i) {
+void Task::task_body() {
+    {
         struct timespec before, after, duration;
 
-        loop_body_before(i);
         before = curtime();
 
-        do_loop_work(i);
+        do_loop_work(/*i*/ -1);
         after = curtime();
         duration = after - before;
 
-        loop_body_after(i, duration);
+        loop_body_after(-1, duration);
     }
 
     common_exit();
     do_exit();
+}
+
+void omp_create_1(const std::unique_ptr<Task> &t) {
+  for (int *i : t->in_mq) {
+    #pragma omp taskwait depend(in: *i)
+  }
+  t->task_body();
+}
+void omp_task_create(const std::unique_ptr<Task> &t, int *outb) {
+    unsigned int n = t->in_mq.size();
+    LOG(INFO, "Creating OMP task %s with %u inputs...\n", t->name.c_str(), n);
+    if (n == 0) {
+      #pragma omp task depend(out: *outb)
+      t->task_body();
+      //LOG(INFO, "AAA"); 
+    } else if (n == 1) {
+      #pragma omp task depend(out: *outb) depend(in: *t->in_mq[0])
+      t->task_body(); 
+      //LOG(INFO, "AAA"); 
+    } else if (n == 2) {
+      #pragma omp task depend(out: *outb) depend(in: *t->in_mq[0],*t->in_mq[1])
+      t->task_body(); 
+      //LOG(INFO, "AAA"); 
+    } else {
+      #pragma omp task depend(out: *outb)
+      omp_create_1(t); 
+      //LOG(INFO, "AAA"); 
+    }
+}
+
+void Task::task_generate(unsigned seed) {
+    (void)seed; // FIXME: pass it to the other functions
+
+    if (!is_originator()) {
+        LOG(ERROR, "Bug: task %s is not originator!\n", name.c_str());
+        exit(EXIT_FAILURE);
+    }
+    //do_init();
+    //common_init();
+    period_init(pinfo, dag.period);
+
+    for (int i = 0; i < dag.num_activations; ++i) {
+        loop_body_before(i);
+        #pragma omp parallel
+        #pragma omp single
+        #pragma omp taskgroup 
+        for (const auto &t : *dag.tasks) {
+        //for (unsigned int i = 0; i < dag.tasks->size(); i++) {
+            omp_task_create(t, &dag.outs[i]); 
+           //omp_task_create(dag.tasks->at(i)); 
+	}
+    }
 }
 
 void wait_on_barrier(std::barrier<> &barrier, const std::string &who) {
@@ -102,10 +151,6 @@ void wait_on_barrier(std::barrier<> &barrier, const std::string &who) {
 }
 
 #define TIMESPEC_FORMAT "%ld.%.9ld"
-
-void period_init(period_info &pinfo, std::chrono::microseconds period) {
-    pinfo_init(&pinfo, std::chrono::nanoseconds(period).count());
-}
 
 void align_deadlines(period_info &pinfo) {
     using namespace std::chrono_literals;
@@ -159,35 +204,9 @@ static char read_input_buffer(std::span<char> buffer) {
 }
 #endif
 
-void wait_incoming_messages(Task &task, int iter) {
-    if (task.in_mq.size()) {
-        // All the input buffers share the same MultiQueue reference, so we
-        // can just wait on the first one
-        task.in_mq.pop();
-
-        // Check that all the buffers have sent the right amount of data
-        for (size_t i = 0; i < task.in_mq.size(); ++i) {
-            // NOTE: CHECKED ONLY IN DEBUG MODE
-            // assert(strlen(task.in_buffers[i]->msg.data()) ==
-            //        (size_t) task.in_buffers[i]->msg.size() - 1);
-
-#if RTDAG_MEM_ACCESS == ON
-            // This is a dummy code (a checksum calculation w xor) to
-            // mimic the memory reads required by the task model
-            task.checksum ^= read_input_buffer(task.in_buffers[i]->msg);
-#endif
-
-	    (void)iter;
-            // To avoid printing too many characters if the buffer is very
-            // long, we limit to the first 50 characters.
-            //LOG(DEBUG,
-            //    "task %s (%u), buffer nxxx_nyyy(%lu): got message: '%.50s'\n",
-            //    task.name.c_str(), iter,
-            //    strlen((char *)task.in_buffers[i]->msg.data()),
-            //    task.in_buffers[i]->msg.data());
-        }
-    }
-}
+//FIXME: This should be unused!
+//void wait_incoming_messages(Task &task, int iter) {
+//}
 
 void Task::loop_body_before(int iter) {
     // A variable is set at the beginning of each period by the originator
@@ -196,7 +215,7 @@ void Task::loop_body_before(int iter) {
 
     if (is_originator()) {
         // Wait for the sink to release this task
-        dag.start_dag->pop();
+//        dag.start_dag->pop();
 
         dag.start_time = get_next_period(&pinfo);
 
@@ -204,7 +223,7 @@ void Task::loop_body_before(int iter) {
             name.c_str(), iter, dag.start_time.tv_sec, dag.start_time.tv_nsec);
     }
 
-    wait_incoming_messages(*this, iter);
+    //wait_incoming_messages(*this, iter);
 }
 
 void write_to_queue(const char *from, int iter, char *buffer, int size) {
@@ -237,7 +256,7 @@ void Task::loop_body_after(int iter, const struct timespec &duration) {
 
         // The values pushed in the multi-queue are meaningless, on the
         // read side we always go check the ->msg content anyway...
-        out_buffers[i]->mq.push(out_buffers[i]->push_idx);
+        //out_buffers[i]->mq.push(out_buffers[i]->push_idx);
 
         // To avoid printing too many characters if the buffer is very
         // long, we limit to the first 50 characters.
@@ -270,7 +289,7 @@ void Task::loop_body_after(int iter, const struct timespec &duration) {
 
         microseconds mduration = to_duration_truncate<microseconds>(dag_duration);
 
-        dag.response_times[iter] = mduration;
+        dag.response_times.push_back(mduration);
 
         if (mduration > dag.e2e_deadline) {
             // we do expect a few deadline misses, despite all
@@ -283,7 +302,7 @@ void Task::loop_body_after(int iter, const struct timespec &duration) {
 
         // Signal the first task that it can start once again (after the
         // period wait elapsed)
-        dag.start_dag->push(0);
+        //dag.start_dag->push(0);
     }
 
     if (is_originator()) {
