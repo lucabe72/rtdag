@@ -144,6 +144,7 @@ static __thread task_matrix_data *tdata = nullptr;
 
 // Must be called by each cpu and omp thread!
 void rtgauss_init(int size, rtgauss_type type, int omp_target_dev) {
+    if (tdata != nullptr) return;
     // Construct the data with the right size
     tdata = new task_matrix_data(size, type);
     omp_dev = omp_target_dev;

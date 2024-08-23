@@ -60,10 +60,10 @@ public:
         e2e_deadline(e2e_deadline),
         num_activations(num_activations),
         barrier(ntasks),
-        response_times(num_activations),
+        response_times(),
 	tasks(nullptr) {}
 
-    std::vector<std::unique_ptr<Task>> *tasks;
+    std::vector<Task*> *tasks;
     int outs[128];
 };
 
@@ -77,6 +77,7 @@ public:
     const int cpu;
 
     MultiQueue &in_mq;
+    int *pout;
     std::vector<Edge *> out_buffers;
 
     period_info pinfo;
@@ -88,7 +89,6 @@ public:
 #endif
 
 private:
-    std::thread th_handle;
     void task_generate(unsigned seed);
     void common_init();
     void loop_body_before(int iter);
@@ -119,7 +119,9 @@ public:
     int start(int seed) {
 	do_init();
         if (is_originator()) {
-          th_handle = std::thread(&Task::task_generate, this, seed);
+          //th_handle = std::thread(&Task::task_generate, this, seed);
+#pragma omp task
+          task_generate(seed);
 	}
 
 	// TODO: Check errors and implement error code
@@ -128,7 +130,8 @@ public:
 
     void wait(void) {
       if (is_originator()) {
-        th_handle.join();
+#pragma omp taskwait
+        //th_handle.join();
       }
     }
 

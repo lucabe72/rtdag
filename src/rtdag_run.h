@@ -76,7 +76,12 @@ int run_dag(const std::string &in_fname) {
     }
 
     // pass pid_list such that tasks can be killed with CTRL+C
-    task_set.launch(pid_list, seed);
+#pragma omp parallel
+#pragma omp single
+    {
+      task_set.launch(pid_list, seed);
+      task_set.wait();
+    }
     // "" is used only to avoid variadic macro warning
     LOG(INFO, "[main] all tasks were finished%s...\n", " ");
 

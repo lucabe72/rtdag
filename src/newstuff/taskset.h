@@ -8,7 +8,7 @@
 
 struct DagTaskset {
     Dag dag;
-    std::vector<std::unique_ptr<Task>> tasks;
+    std::vector<Task*> tasks;
 
 public:
     DagTaskset(const input_base &input);
@@ -16,6 +16,7 @@ public:
     void print(std::ostream &os);
 
     void launch(std::vector<int> &pids, unsigned seed);
+    void wait();
 };
 
 #endif // RTDAG_TASKSET_H

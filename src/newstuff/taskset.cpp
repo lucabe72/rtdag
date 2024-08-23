@@ -43,11 +43,11 @@ static inline s64 num_activations(std::chrono::microseconds hyperperiod,
 }
 
 static inline int
-task_single_check(const std::vector<std::unique_ptr<Task>> &tasks,
+task_single_check(const std::vector<Task *> &tasks,
                   const auto predicate, const std::string &which) {
     auto predicate_on_pointer =
-        [predicate](const std::unique_ptr<Task> &task_ptr) {
-            return predicate(*task_ptr);
+        [predicate](const Task *task_ptr) {
+            return predicate(task_ptr);
         };
 
     auto begin = std::begin(tasks);
@@ -141,7 +141,7 @@ DagTaskset::DagTaskset(const input_base &input) :
         std::string task_type = input.get_tasks_type(i);
 
         if (task_type == "cpu") {
-            tasks.emplace_back(std::make_unique<CPUTask>(
+            tasks.emplace_back(new CPUTask(
                 dag, name, task_type, sched_info, cpu, *dag.in_queues[i], out_edges,
                 std::chrono::microseconds(input.get_tasks_wcet(i)),
                 input.get_tasks_expected_wcet_ratio(i),
@@ -162,13 +162,14 @@ DagTaskset::DagTaskset(const input_base &input) :
         else {
             LOG(ERROR, "Unsupported task type %s\n.", task_type.c_str());
         }
+	tasks[i]->pout = &dag.outs[i];
     }
 
-    const auto is_originator = [](const Task &task) {
-        return task.is_originator();
+    const auto is_originator = [](const Task *task) {
+        return task->is_originator();
     };
 
-    const auto is_sink = [](const Task &task) { return task.is_sink(); };
+    const auto is_sink = [](const Task *task) { return task->is_sink(); };
 
     /*int orig_index =*/ task_single_check(tasks, is_originator, "originator");
     task_single_check(tasks, is_sink, "sink");
@@ -204,8 +205,12 @@ void DagTaskset::launch(std::vector<int> &pids, unsigned seed) {
 
         // pids.push_back(tid);
     }
+}
 
+void DagTaskset::wait()
+{
     for (auto &task_ptr : tasks) {
         task_ptr->wait();
     }
 }
+

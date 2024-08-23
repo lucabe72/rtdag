@@ -72,8 +72,10 @@ void period_init(period_info &pinfo, std::chrono::microseconds period) {
 
 // ------------------------- MEMBER FUNCTIONS -------------------------- //
 void Task::task_body() {
-    {
         struct timespec before, after, duration;
+            rtgauss_init(/*matrix_size*/ 4, /*get_rtgauss_type()*/ RTGAUSS_CPU, /*omp_target*/ 0);
+
+    	{
 
         before = curtime();
 
@@ -88,33 +90,49 @@ void Task::task_body() {
     do_exit();
 }
 
-void omp_create_1(const std::unique_ptr<Task> &t) {
+void omp_create_1(Task *t) {
   for (int *i : t->in_mq) {
     #pragma omp taskwait depend(in: *i)
   }
   t->task_body();
 }
-void omp_task_create(const std::unique_ptr<Task> &t, int *outb) {
+
+void omp_task_create(Task *t, int *outb) {
     unsigned int n = t->in_mq.size();
     LOG(INFO, "Creating OMP task %s with %u inputs...\n", t->name.c_str(), n);
     if (n == 0) {
       #pragma omp task depend(out: *outb)
       t->task_body();
-      //LOG(INFO, "AAA"); 
     } else if (n == 1) {
-      #pragma omp task depend(out: *outb) depend(in: *t->in_mq[0])
+      #pragma omp task depend(in: *t->in_mq[0]) depend(out: *outb)
       t->task_body(); 
-      //LOG(INFO, "AAA"); 
     } else if (n == 2) {
-      #pragma omp task depend(out: *outb) depend(in: *t->in_mq[0],*t->in_mq[1])
+      #pragma omp task depend(in: *t->in_mq[0],*t->in_mq[1]) depend(out: *outb)
       t->task_body(); 
-      //LOG(INFO, "AAA"); 
     } else {
       #pragma omp task depend(out: *outb)
       omp_create_1(t); 
-      //LOG(INFO, "AAA"); 
     }
 }
+
+std::fstream open_append(const std::string &fname, bool &existed) {
+    std::fstream os;
+    existed = false;
+
+    // First open will NOT create the file because std::ios_base::in is in
+    // the flags
+    os.open(fname, std::ios_base::out | std::ios_base::in);
+    if (os.is_open()) {
+        existed = true;
+    }
+
+    // We have to close and re-open in append this time
+    os.clear();
+    os.open(fname, std::ios_base::out | std::ios_base::app);
+
+    return os;
+}
+
 
 void Task::task_generate(unsigned seed) {
     (void)seed; // FIXME: pass it to the other functions
@@ -128,16 +146,31 @@ void Task::task_generate(unsigned seed) {
     period_init(pinfo, dag.period);
 
     for (int i = 0; i < dag.num_activations; ++i) {
+        // Wait for the next period activation
+        pinfo_sum_period_and_wait(&pinfo);
+#pragma omp taskwait
         loop_body_before(i);
-        #pragma omp parallel
-        #pragma omp single
-        #pragma omp taskgroup 
-        for (const auto &t : *dag.tasks) {
-        //for (unsigned int i = 0; i < dag.tasks->size(); i++) {
-            omp_task_create(t, &dag.outs[i]); 
-           //omp_task_create(dag.tasks->at(i)); 
+        //for (auto &t : *dag.tasks) {
+        for (unsigned int i = 0; i < dag.tasks->size(); i++) {
+            //omp_task_create(t, &dag.outs[i]);
+           omp_task_create(dag.tasks->at(i), &dag.outs[i]);
 	}
     }
+        // FIXME: change this to avoid creating the output directory
+        std::stringstream ss;
+        ss << dag.name << "/" << dag.name << ".log";
+
+        bool existed;
+        std::fstream os = open_append(ss.str(), existed);
+
+        if (existed) {
+            // We will write on the first line the e2e deadline
+            os << dag.e2e_deadline << '\n';
+        }
+
+        for (const auto &rt : dag.response_times) {
+            os << rt.count() << "\n";
+        }
 }
 
 void wait_on_barrier(std::barrier<> &barrier, const std::string &who) {
@@ -280,7 +313,6 @@ void Task::loop_body_after(int iter, const struct timespec &duration) {
 #else
     (void)duration;
 #endif // NDEBUG
-
     if (is_sink()) {
         struct timespec dag_duration = curtime() - dag.start_time;
 
@@ -296,8 +328,8 @@ void Task::loop_body_after(int iter, const struct timespec &duration) {
             // precautions, we'll find them in the output file
             LOG(ERROR,
                 "ERROR: dag deadline violation detected in iteration "
-                "%u. duration %ld us\n",
-                iter, mduration.count());
+                "%u. duration %ld us > %ld us\n",
+                iter, mduration.count(), dag.e2e_deadline.count());
         }
 
         // Signal the first task that it can start once again (after the
@@ -305,28 +337,12 @@ void Task::loop_body_after(int iter, const struct timespec &duration) {
         //dag.start_dag->push(0);
     }
 
+#if 0
     if (is_originator()) {
         // Wait for the next period activation
         pinfo_sum_period_and_wait(&pinfo);
     }
-}
-
-std::fstream open_append(const std::string &fname, bool &existed) {
-    std::fstream os;
-    existed = false;
-
-    // First open will NOT create the file because std::ios_base::in is in
-    // the flags
-    os.open(fname, std::ios_base::out | std::ios_base::in);
-    if (os.is_open()) {
-        existed = true;
-    }
-
-    // We have to close and re-open in append this time
-    os.clear();
-    os.open(fname, std::ios_base::out | std::ios_base::app);
-
-    return os;
+#endif
 }
 
 void Task::common_exit() {
@@ -334,6 +350,7 @@ void Task::common_exit() {
     // exec_time_f.close();
 #endif // NDEBUG
 
+#if 0
     if (is_sink()) {
         // FIXME: change this to avoid creating the output directory
         std::stringstream ss;
@@ -351,6 +368,7 @@ void Task::common_exit() {
             os << rt.count() << "\n";
         }
     }
+#endif
 
 #if RTDAG_MEM_ACCESS == ON
     // Don't remove this print. otherwise the logic to read the memory will
