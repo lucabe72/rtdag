@@ -72,7 +72,7 @@ enum class command_action {
 
 struct opts {
     command_action action = command_action::RUN_DAG;
-    std::string in_fname = "";
+    std::vector<std::string> in_fname;
     microseconds duration{0};
     rtgauss_type rtg_type = RTGAUSS_CPU;
     int rtg_target = 0;
@@ -207,8 +207,8 @@ opts parse_args(int argc, char *argv[]) {
     // static check whether this input format does have an input file or
     // not
     if constexpr (input_type::has_input_file) {
-        if (optind < argc) {
-            program_options.in_fname = argv[optind++];
+        while (optind < argc) {
+            program_options.in_fname.push_back(argv[optind++]);
         }
     }
 
@@ -222,7 +222,7 @@ opts parse_args(int argc, char *argv[]) {
     // static check whether this input format does have an input file or
     // not
     if constexpr (input_type::has_input_file) {
-        if (program_options.in_fname.length() < 1) {
+        if (program_options.in_fname.size() < 1) {
             fprintf(stderr, "Error: too few arguments supplied!\n");
             program_options.action = command_action::HELP;
             program_options.exit_code = EXIT_FAILURE;
