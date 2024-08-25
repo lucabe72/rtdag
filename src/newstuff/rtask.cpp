@@ -304,7 +304,7 @@ std::fstream open_append(const std::string &fname, bool &existed) {
     }
 
     // We have to close and re-open in append this time
-    os.clear();
+    os.close();
     os.open(fname, std::ios_base::out | std::ios_base::app);
 
     return os;
@@ -325,6 +325,7 @@ void Task::common_exit() {
 
         if (existed) {
             // We will write on the first line the e2e deadline
+            os << "New DAG:    ";
             os << dag.e2e_deadline << '\n';
         }
 
