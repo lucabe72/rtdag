@@ -1,6 +1,7 @@
 #ifndef RTDAG_RUN_H
 #define RTDAG_RUN_H
 
+#include <sys/syscall.h> /* For SYS_gettid definitions */
 #include <iostream>
 
 #include "input/input.h"
@@ -8,6 +9,7 @@
 
 #include <cstring>
 #include <sys/stat.h>
+#include <omp.h>
 
 // the dag definition is here
 // #include "task_set.h"
@@ -39,6 +41,27 @@ std::vector<int> pid_list;
 // }
 
 int get_ticks_per_us(bool required);
+
+pid_t gettid(void)
+{
+  return syscall(SYS_gettid);
+}
+
+void set_omp_thread_scheduling(void)
+{
+  //std::cout << "Thread " << omp_get_thread_num() << " / " <<  omp_get_num_threads() << std::endl;
+  struct sched_param sp;
+  int tid, res;
+
+  tid = gettid();
+  sp.sched_priority = 90;
+  res = sched_setscheduler(tid, SCHED_FIFO, &sp);
+  if (res < 0) {
+    std::cerr << "ERROR in SetScheduler: " << res << std::endl;
+
+    exit(-1);
+  }
+}
 
 int run_dag(const std::string &in_fname) {
     // uncomment this to get a random seed
@@ -77,10 +100,13 @@ int run_dag(const std::string &in_fname) {
 
     // pass pid_list such that tasks can be killed with CTRL+C
 #pragma omp parallel
-#pragma omp single
     {
-      task_set.launch(pid_list, seed);
-      task_set.wait();
+      set_omp_thread_scheduling();
+#pragma omp single
+      {
+        task_set.launch(pid_list, seed);
+        task_set.wait();
+      }
     }
     // "" is used only to avoid variadic macro warning
     LOG(INFO, "[main] all tasks were finished%s...\n", " ");
