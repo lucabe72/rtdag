@@ -1,6 +1,7 @@
 #include "newstuff/taskset.h"
 #include <pthread.h>
 
+unsigned int DagTaskset::cnt;
 // static inline std::vector<int> output_tasks(const input_base &input,
 //                                             int task_id) {
 //     const int ntasks = input.get_n_tasks();
@@ -79,6 +80,7 @@ DagTaskset::DagTaskset(const input_base &input) :
                         input.get_repetitions()),
         input.get_n_tasks()) {
     int ntasks = input.get_n_tasks();
+    mycnt = cnt++;
 
     // Create the in_queues for each task
     for (int task_id = 0; task_id < ntasks; ++task_id) {

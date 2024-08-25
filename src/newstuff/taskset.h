@@ -9,6 +9,8 @@
 struct DagTaskset {
     Dag dag;
     std::vector<Task*> tasks;
+    static unsigned int cnt;
+    unsigned int mycnt;
 
 public:
     DagTaskset(const input_base &input);

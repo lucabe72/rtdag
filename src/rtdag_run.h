@@ -63,7 +63,7 @@ void set_omp_thread_scheduling(void)
   }
 }
 
-int run_dag(const std::string &in_fname) {
+int run_dag(const std::vector<std::string> &in_fname) {
     // uncomment this to get a random seed
     // unsigned seed = time(0);
     // or set manually a constant seed to repeat the same sequence
@@ -76,37 +76,44 @@ int run_dag(const std::string &in_fname) {
         return ret;
     }
 
-    // read the dag configuration from the selected type of input
-    std::unique_ptr<input_base> inputs =
-        std::make_unique<input_type>(in_fname.c_str());
-    dump(*inputs);
-    DagTaskset task_set(*inputs);
-    std::cout << "\nPrinting the input DAG: \n";
-    task_set.print(std::cout);
+    std::vector<DagTaskset *> tsets;
+    for (const auto &fname : in_fname) {
+      // read the dag configuration from the selected type of input
+      std::unique_ptr<input_base> inputs =
+        std::make_unique<input_type>(fname.c_str());
+      dump(*inputs);
+      DagTaskset *ts = new DagTaskset(*inputs);
+      tsets.push_back(ts);
+      std::cout << "\nPrinting the input DAG: \n";
+      ts->print(std::cout);
+      // create the directory where execution time are saved
+      struct stat st; // This is C++, you cannot use {0} to initialize to zero an
+                      // entire struct.
+      memset(&st, 0, sizeof(struct stat));
+      if (stat(ts->dag.name.c_str(), &st) == -1) {
 
-    // create the directory where execution time are saved
-    struct stat st; // This is C++, you cannot use {0} to initialize to zero an
-                    // entire struct.
-    memset(&st, 0, sizeof(struct stat));
-    if (stat(task_set.dag.name.c_str(), &st) == -1) {
         // permisions required in order to allow using rsync since rt-dag is run
         // as root in the target computer
-        int rv = mkdir(task_set.dag.name.c_str(), 0777);
+        int rv = mkdir(ts->dag.name.c_str(), 0777);
         if (rv != 0) {
             perror("ERROR creating directory");
             exit(1);
         }
-    }
-
-    // pass pid_list such that tasks can be killed with CTRL+C
-#pragma omp parallel
-    {
-      set_omp_thread_scheduling();
-#pragma omp single
-      {
-        task_set.launch(pid_list, seed);
-        task_set.wait();
       }
+
+      // pass pid_list such that tasks can be killed with CTRL+C
+#pragma omp parallel
+      {
+        set_omp_thread_scheduling();
+#pragma omp single
+        {
+          ts->launch(pid_list, seed);
+        }
+      }
+    }
+    LOG(INFO, "[main] waiting for all tasks...\n");
+    for (const auto &ts : tsets) {
+      ts->wait();
     }
     // "" is used only to avoid variadic macro warning
     LOG(INFO, "[main] all tasks were finished%s...\n", " ");
