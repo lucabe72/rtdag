@@ -158,7 +158,7 @@ void Task::task_generate(unsigned seed) {
     }
         // FIXME: change this to avoid creating the output directory
         std::stringstream ss;
-        ss << dag.name << "/" << dag.name << ".log";
+        ss << dag.name << "/" << dag.name << "-" << dag.id << ".log";
 
         bool existed;
         std::fstream os = open_append(ss.str(), existed);
@@ -354,7 +354,7 @@ void Task::common_exit() {
     if (is_sink()) {
         // FIXME: change this to avoid creating the output directory
         std::stringstream ss;
-        ss << dag.name << "/" << dag.name << ".log";
+        ss << dag.name << "/" << dag.name << "-" << dag.id << ".log";
 
         bool existed;
         std::fstream os = open_append(ss.str(), existed);

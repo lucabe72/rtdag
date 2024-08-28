@@ -53,14 +53,17 @@ public:
     // All the response times
     std::vector<microseconds> response_times;
 
+    unsigned int id;
+
     Dag(const std::string &name, microseconds period, microseconds e2e_deadline,
-        s64 num_activations, s32 ntasks) :
+        s64 num_activations, s32 ntasks, unsigned int cnt) :
         name(name),
         period(period),
         e2e_deadline(e2e_deadline),
         num_activations(num_activations),
         barrier(ntasks),
         response_times(),
+        id(cnt),
 	tasks(nullptr) {}
 
     std::vector<Task*> *tasks;
