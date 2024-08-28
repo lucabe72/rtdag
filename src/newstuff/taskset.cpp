@@ -78,7 +78,7 @@ DagTaskset::DagTaskset(const input_base &input) :
         num_activations(std::chrono::microseconds(input.get_hyperperiod()),
                         std::chrono::microseconds(input.get_period()),
                         input.get_repetitions()),
-        input.get_n_tasks()) {
+        input.get_n_tasks(), cnt) {
     int ntasks = input.get_n_tasks();
     mycnt = cnt++;
 
