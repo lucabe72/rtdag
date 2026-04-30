@@ -62,7 +62,7 @@ static inline void exact_length(int expected, size_t size,
     if (expected < 0 || unsigned(expected) != size) {
         fprintf(stderr,
                 "%s: attribute %s has wrong size: %d expected, found %lu\n",
-                get_error_msg<error>(), name.c_str(), expected, size);
+                get_error_msg<error>(), name.c_str(), expected, (long unsigned int)size);
         exit_if_fatal_error<error>();
     }
 }
@@ -116,8 +116,8 @@ input_yaml::input_yaml(const char *fname) : input_base() {
 
     if (((unsigned long)(n_tasks)) > MAX_N_TASKS) {
         std::fprintf(stderr,
-                     "ERROR: 'n_tasks' greater than maximum allowed: %d > %lu\n",
-                     n_tasks, MAX_N_TASKS);
+                     "ERROR: 'n_tasks' greater than maximum allowed: %d > %u\n",
+                     n_tasks, (unsigned int)MAX_N_TASKS);
         std::fprintf(stderr, "Please, recompile rtdag to increase the "
                              "maximum allowed number.\n");
         std::exit(EXIT_FAILURE);
@@ -203,6 +203,7 @@ input_yaml::input_yaml(const char *fname) : input_base() {
     for (int i = 0; i < n_tasks; ++i) {
         for (int j = 0; j < n_tasks; ++j) {
             adjacency_matrix[i][j] = adj_mat[i][j];
+            //adjacency_matrix[j][i] = adj_mat[i][j];
         }
     }
 

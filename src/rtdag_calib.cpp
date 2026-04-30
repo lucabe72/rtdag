@@ -76,7 +76,7 @@ int test_calibration(microseconds duration, struct timespec &time_difference) {
 
     time_difference = time_after - time_before;
     printf("Test duration %ld micros\n",
-           to_duration_truncate<microseconds>(time_difference).count());
+           (long int)to_duration_truncate<microseconds>(time_difference).count());
 
     return 0;
 }
@@ -99,7 +99,7 @@ int calibrate(microseconds duration) {
         ticks_per_us = 10;
     }
 
-    std::cout << "About to calibrate for (roughly) " << duration
+    std::cout << "About to calibrate for (roughly) " << duration.count()
               << " micros ..." << std::endl;
 
     // Will never return an error

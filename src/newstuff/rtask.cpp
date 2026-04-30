@@ -8,6 +8,7 @@
 #include <fstream>
 #include <istream>
 #include <ostream>
+#include <sstream>
 #include <span>
 
 // ------------------------- HELPER FUNCTIONS -------------------------- //
@@ -107,15 +108,17 @@ void period_init(period_info &pinfo, std::chrono::microseconds period) {
     pinfo_init(&pinfo, std::chrono::nanoseconds(period).count());
 }
 
-void align_deadlines(period_info &pinfo) {
+void align_deadlines(period_info &pinfo, std::chrono::microseconds period) {
     using namespace std::chrono_literals;
 
     // Wait for 100ms to make sure that in-kernel CBS deadlines are
     // aligned with the absolute deadlines in pinfo.
-    std::chrono::milliseconds waitfor = 100ms;
+    std::chrono::milliseconds waitfor = 600ms;
 
-    LOG(DEBUG, "waiting for %ld ms...\n", waitfor.count());
-    pinfo_sum_and_wait(&pinfo, std::chrono::nanoseconds(waitfor).count());
+    LOG(DEBUG, "waiting for %ld ms...\n", (long int)waitfor.count());
+    pinfo_sum_and_wait(&pinfo, std::chrono::nanoseconds(period).count());
+    pinfo_sum_and_wait(&pinfo, std::chrono::nanoseconds(period).count());
+    pinfo_sum_and_wait(&pinfo, std::chrono::nanoseconds(period).count());
     LOG(DEBUG, "woken up: pinfo.next_period: " TIMESPEC_FORMAT " s\n",
         pinfo.next_period.tv_sec, pinfo.next_period.tv_nsec);
 }
@@ -140,7 +143,7 @@ void Task::common_init() {
     wait_on_barrier(dag.barrier, name);
 
     if (is_originator()) {
-        align_deadlines(pinfo);
+        align_deadlines(pinfo, dag.period);
     }
 }
 
@@ -244,7 +247,7 @@ void Task::loop_body_after(int iter, const struct timespec &duration) {
         LOG(DEBUG,
             "task %s (%u): buffer n%d_n%d, size %lu, sent message: '%.50s'\n",
             name.c_str(), iter, out_buffers[i]->from, out_buffers[i]->to,
-            strlen((char *)out_buffers[i]->msg.data()),
+            (long unsigned int)strlen((char *)out_buffers[i]->msg.data()),
             out_buffers[i]->msg.data());
     }
 
@@ -277,8 +280,8 @@ void Task::loop_body_after(int iter, const struct timespec &duration) {
             // precautions, we'll find them in the output file
             LOG(ERROR,
                 "ERROR: dag deadline violation detected in iteration "
-                "%u. duration %ld us\n",
-                iter, mduration.count());
+                "%u. duration %ld us > %ld us\n",
+                iter, (long int)mduration.count(), (long int)dag.e2e_deadline.count());
         }
 
         // Signal the first task that it can start once again (after the
@@ -326,7 +329,7 @@ void Task::common_exit() {
         if (existed) {
             // We will write on the first line the e2e deadline
             os << "New DAG:    ";
-            os << dag.e2e_deadline << '\n';
+            os << dag.e2e_deadline.count() << '\n';
         }
 
         for (const auto &rt : dag.response_times) {

@@ -1,7 +1,6 @@
-
 #include "periodic_task.h"
 
-static void inc_period(struct period_info *pinfo, long delta_ns) 
+static void inc_period(struct period_info *pinfo, unsigned long long delta_ns) 
 {
 	// add microseconds to timespecs nanosecond counter
 	pinfo->next_period.tv_nsec += delta_ns;
@@ -19,7 +18,7 @@ void pinfo_init(struct period_info *pinfo, long period_ns)
 	clock_gettime(CLOCK_MONOTONIC, &(pinfo->next_period));
 }
 
-void pinfo_sum_and_wait(struct period_info *pinfo, long delta_ns)
+void pinfo_sum_and_wait(struct period_info *pinfo, unsigned long long delta_ns)
 {
 	inc_period(pinfo, delta_ns);
 

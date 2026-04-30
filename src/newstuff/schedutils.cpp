@@ -24,14 +24,14 @@ sched_info::sched_info(u32 priority, sched_info::ns runtime,
         LOG(ERROR,
             "invalid scheduling parameters: runtime %lu > deadline "
             "%lu.\n",
-            _runtime.count(), _deadline.count());
+            (long unsigned int)_runtime.count(), (long unsigned int)_deadline.count());
         std::exit(EXIT_FAILURE);
     }
 
     if (_deadline > _period) {
         LOG(ERROR,
             "invalid scheduling parameters: deadline %lu > period %lu.\n",
-            _deadline.count(), _period.count());
+            (long unsigned int)_deadline.count(), (long unsigned int)_period.count());
         std::exit(EXIT_FAILURE);
     }
 }
@@ -58,8 +58,8 @@ void sched_info::set() const {
     if (sched_setattr(0, &sa, 0) < 0) {
         LOG(ERROR, "sched_setattr() failed: %s.\n", std::strerror(errno));
         LOG(ERROR, "parameters: P=%d DL_C=%lu DL_D=%lu DL_T=%lu\n",
-            sa.sched_priority, sa.sched_runtime, sa.sched_deadline,
-            sa.sched_period);
+            sa.sched_priority, (long unsigned int)sa.sched_runtime, (long unsigned int)sa.sched_deadline,
+            (long unsigned int)sa.sched_period);
         LOG(ERROR,
             "make sure you can run real-time tasks, for example by \n"
             "          running the following command before executing rtdag:\n"

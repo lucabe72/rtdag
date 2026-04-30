@@ -39,7 +39,7 @@ void pinfo_init(struct period_info *pinfo, long period_ns);
 
 void pinfo_sum_period_and_wait(struct period_info *pinfo);
 
-void pinfo_sum_and_wait(struct period_info *pinfo, long delta_ns);
+void pinfo_sum_and_wait(struct period_info *pinfo, unsigned long long delta_ns);
 
 static inline struct timespec *pinfo_get_abstime(struct period_info *pinfo) { return &pinfo->next_period; }
 
