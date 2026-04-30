@@ -8,6 +8,7 @@
 #include <fstream>
 #include <istream>
 #include <ostream>
+#include <sstream>
 #include <span>
 
 // ------------------------- HELPER FUNCTIONS -------------------------- //
@@ -91,8 +92,8 @@ void Task::task_body() {
 }
 
 void omp_create_1(Task *t) {
-  for (int *i : t->in_mq) {
-    #pragma omp taskwait depend(in: *i)
+  for (unsigned int i = 0; i < t->in_mq.size(); i++) {
+    #pragma omp taskwait depend(in: *t->in_mq[i])
   }
   t->task_body();
 }
@@ -109,7 +110,23 @@ void omp_task_create(Task *t, int *outb) {
     } else if (n == 2) {
       #pragma omp task depend(in: *t->in_mq[0],*t->in_mq[1]) depend(out: *outb)
       t->task_body(); 
+    } else if (n == 3) {
+      #pragma omp task depend(in: *t->in_mq[0],*t->in_mq[1],*t->in_mq[2]) depend(out: *outb)
+      t->task_body(); 
+    } else if (n == 4) {
+      #pragma omp task depend(in: *t->in_mq[0],*t->in_mq[1],*t->in_mq[2],*t->in_mq[3]) depend(out: *outb)
+      t->task_body(); 
+    } else if (n == 5) {
+      #pragma omp task depend(in: *t->in_mq[0],*t->in_mq[1],*t->in_mq[2],*t->in_mq[3],*t->in_mq[4]) depend(out: *outb)
+      t->task_body(); 
+    } else if (n == 6) {
+      #pragma omp task depend(in: *t->in_mq[0],*t->in_mq[1],*t->in_mq[2],*t->in_mq[3],*t->in_mq[4],*t->in_mq[5]) depend(out: *outb)
+      t->task_body(); 
+    } else if (n == 7) {
+      #pragma omp task depend(in: *t->in_mq[0],*t->in_mq[1],*t->in_mq[2],*t->in_mq[3],*t->in_mq[4],*t->in_mq[5],*t->in_mq[6]) depend(out: *outb)
+      t->task_body(); 
     } else {
+abort();
       #pragma omp task depend(out: *outb)
       omp_create_1(t); 
     }
@@ -165,7 +182,7 @@ void Task::task_generate(unsigned seed) {
 
         if (existed) {
             // We will write on the first line the e2e deadline
-            os << dag.e2e_deadline << '\n';
+            os << dag.e2e_deadline.count() << '\n';
         }
 
         for (const auto &rt : dag.response_times) {
@@ -192,7 +209,7 @@ void align_deadlines(period_info &pinfo) {
     // aligned with the absolute deadlines in pinfo.
     std::chrono::milliseconds waitfor = 100ms;
 
-    LOG(DEBUG, "waiting for %ld ms...\n", waitfor.count());
+    LOG(DEBUG, "waiting for %ld ms...\n", (long int)waitfor.count());
     pinfo_sum_and_wait(&pinfo, std::chrono::nanoseconds(waitfor).count());
     LOG(DEBUG, "woken up: pinfo.next_period: " TIMESPEC_FORMAT " s\n",
         pinfo.next_period.tv_sec, pinfo.next_period.tv_nsec);
@@ -296,7 +313,7 @@ void Task::loop_body_after(int iter, const struct timespec &duration) {
         LOG(DEBUG,
             "task %s (%u): buffer n%d_n%d, size %lu, sent message: '%.50s'\n",
             name.c_str(), iter, out_buffers[i]->from, out_buffers[i]->to,
-            strlen((char *)out_buffers[i]->msg.data()),
+            (long unsigned int)strlen((char *)out_buffers[i]->msg.data()),
             out_buffers[i]->msg.data());
     }
 
@@ -319,6 +336,7 @@ void Task::loop_body_after(int iter, const struct timespec &duration) {
         LOG(INFO, "task %s (%u): dag dag_duration " TIMESPEC_FORMAT " s\n",
             name.c_str(), iter, dag_duration.tv_sec, dag_duration.tv_nsec);
 
+
         microseconds mduration = to_duration_truncate<microseconds>(dag_duration);
 
         dag.response_times.push_back(mduration);
@@ -329,7 +347,7 @@ void Task::loop_body_after(int iter, const struct timespec &duration) {
             LOG(ERROR,
                 "ERROR: dag deadline violation detected in iteration "
                 "%u. duration %ld us > %ld us\n",
-                iter, mduration.count(), dag.e2e_deadline.count());
+                iter, (long int)mduration.count(), (long int)dag.e2e_deadline.count());
         }
 
         // Signal the first task that it can start once again (after the

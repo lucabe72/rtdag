@@ -183,7 +183,7 @@ public:
 
     void do_loop_work(int iter) override {
         LOG(INFO, "task %s (%u): running the processing step for %lu * %f\n",
-            name.c_str(), iter, wcet.count(), ticks_per_us);
+            name.c_str(), iter, (long unsigned int)wcet.count(), ticks_per_us);
         Count_Time_Ticks(wcet, ticks_per_us);
     }
 

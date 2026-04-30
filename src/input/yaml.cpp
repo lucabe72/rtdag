@@ -62,7 +62,7 @@ static inline void exact_length(int expected, size_t size,
     if (expected < 0 || unsigned(expected) != size) {
         fprintf(stderr,
                 "%s: attribute %s has wrong size: %d expected, found %lu\n",
-                get_error_msg<error>(), name.c_str(), expected, size);
+                get_error_msg<error>(), name.c_str(), expected, (long unsigned int)size);
         exit_if_fatal_error<error>();
     }
 }
